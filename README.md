@@ -1,2 +1,5 @@
-# HtmlBuilder
-Yii2 extension . HTML heper
+# HtmlBuilde
+============
+
+PHP to HTML.
+Write .php files without html tags.
