@@ -34,3 +34,8 @@ $html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], [
     ])
 ]);
 ```
+
+Output:
+```html
+<div class="alert alert-primary" role="alert"><span><span>A simple primary alert—check it out!</span><strong>text2</strong></span></div>
+```
