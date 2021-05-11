@@ -9,6 +9,7 @@ Simple using:
 
 ```php
 <?php
+/** @var HtmlBuilder $html */
 $html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], 'A simple primary alert—check it out!');
 ```
 
