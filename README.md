@@ -12,6 +12,10 @@ Simple using:
 /** @var HtmlBuilder $html */
 $html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], 'A simple primary alert—check it out!');
 ```
+Output:
+```html
+<div class="alert alert-primary" role="alert">A simple primary alert—check it out!</div>
+```
 
 ```php
 <?php
@@ -20,7 +24,7 @@ $html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], 'A simp
 $variable_1 = true;
 echo 
 $html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], [
-    $html->tag('span', [], [
+    $html->tag('div', [], [
         static function () use ($html, $variable_1) {
             $out = '';
             if ($variable_1) {
@@ -37,5 +41,5 @@ $html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], [
 
 Output:
 ```html
-<div class="alert alert-primary" role="alert"><span><span>A simple primary alert—check it out!</span><strong>text2</strong></span></div>
+<div class="alert alert-primary" role="alert"><div><span>A simple primary alert—check it out!</span><strong>text2</strong></div></div>
 ```
