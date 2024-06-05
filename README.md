@@ -5,6 +5,8 @@ PHP array[] to HTML string
 
 Write .php files without html tags.
 
+Online generator: https://www.bittala.sk/code/converter
+
 Simple using:
 
 ```php
