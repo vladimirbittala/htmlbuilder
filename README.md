@@ -5,43 +5,76 @@ PHP array[] to HTML string
 
 Write .php files without html tags.
 
-Online generator: https://www.bittala.sk/code/converter
-
-Simple using:
+Simple usage:
 
 ```php
 <?php
-/** @var HtmlBuilder $html */
-$html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], 'A simple primary alert—check it out!');
+use biv\core\H;
+
+echo H::div(['class' => 'alert alert-primary', 'role' => 'alert'], [
+    'A simple primary alert—check it out!'
+]);
 ```
 Output:
 ```html
 <div class="alert alert-primary" role="alert">A simple primary alert—check it out!</div>
 ```
 
+
+
+Advanced usage:
+
 ```php
 <?php
-/** @var HtmlBuilder $html */
+use biv\core\H;
 
-$variable_1 = true;
-echo 
-$html->tag('div', ['class' => 'alert alert-primary', 'role' => 'alert'], [
-    $html->tag('div', [], [
-        static function () use ($html, $variable_1) {
-            $out = '';
-            if ($variable_1) {
-                $out .= $html->tag('span', [], [
-                    'A simple primary alert—check it out!',
-                ]);
-            }
-            return $out;
-        },
-        $html->tag('strong', [], 'text2')
-    ])
-]);
+$var1 = ['a', 'b', 'c'];
+$var2 = 'Lorem Ipsum';
+
+
+return
+    H::div(['class' => 'alert alert-primary', 'role' => 'alert'], [
+        H::div([], [
+            static function () use ($var1, $var2) {
+                $out = [];
+
+                if ($var1) {
+                    foreach ($var1 as $k => $v) {
+                        $out[] = H::span(content: [
+                            'A simple primary alert—check it out!',
+                            H::strong([], $v)
+                        ]);
+                    }
+                    $out[] = H::img([
+                        'class'  => ['ico','me-3','me-sm-5'],
+                        'src'    => '/image1.jpg',
+                        'width'  => 28,
+                        'height' => 28,
+                        'alt'    => $var2,
+                    ]);
+                }
+                return $out;
+            },
+            H::strong([], 'text2')
+        ])
+    ]);
 ```
 
 Output:
 ```html
-<div class="alert alert-primary" role="alert"><div><span>A simple primary alert—check it out!</span><strong>text2</strong></div></div>
+<div class="alert alert-primary" role="alert">
+    <div>
+        <span>A simple primary alert—check it out!
+            <strong>a</strong>
+        </span>
+        <span>A simple primary alert—check it out!
+            <strong>b</strong>
+        </span>
+        <span>A simple primary alert—check it out!
+            <strong>c</strong>
+        </span>
+        <img class="ico me-3 me-sm-5" src="/image1.jpg" width="28" height="28" alt="Lorem Ipsum" title="Lorem Ipsum" loading="lazy">
+        <strong>text2</strong>
+    </div>
+</div>
 ```

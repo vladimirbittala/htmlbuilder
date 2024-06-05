@@ -1,169 +1,125 @@
-<?php
+<?php /** @noinspection PhpUnused */
+
 
 namespace biv\core;
 
+
+use JetBrains\PhpStorm\Pure;
 use function in_array;
 use function is_array;
 use function is_bool;
 use function is_callable;
 use function is_string;
 
+define('BIV_SERVER', $_SERVER);
+
 /**
  */
 class H
 {
+    public const string ACCESS_TAG_BY_LOGGED = 'data-access-by-logged';
+    public const string ACCESS_TAG_BY_ROLE_AND = 'data-access-by-role-and';
+    public const string ACCESS_TAG_BY_ROLE_OR = 'data-access-by-role-or';
+    public const string ACCESS_ONLY_LOGGED = 'only-logged';
+    public const string ACCESS_ONLY_GUEST = 'only-guest';
+    public const string ACCESS_TAG_URL = 'data-access_url';
+    public static bool $is_ie = false;
+    public static string $language = 'cs';
+    public static string $domain;
+    public const string VOID_HREF = '#';
 
-    public const ACCESS_TAG_URL = 'data-access_url';
-    public static array $autoClosedTags = [
-        'img',
-        'br',
-        'hr',
-        'input',
-        'area',
-        'link',
-        'meta',
-        'param',
-        'base',
-        'col',
-        'command',
-        'keygen',
-        'source'
-    ];
-    public static array $voidElements = [
-        'area',
-        'base',
-        'br',
-        'col',
-        'command',
-        'embed',
-        'hr',
-        'img',
-        'input',
-        'keygen',
-        'link',
-        'meta',
-        'param',
-        'source',
-        'track',
-        'wbr',
-    ];
-
-    /**
-     * Base method
-     *
-     * @param string $tag
-     * @param array  $attributes
-     * @param null   $content
-     *
-     * @return string
-     */
-
-    public function tag(string $tag, array $attributes = [], $content = null): string
+    public function __construct()
     {
+
+        self::$domain = str_replace('www.', '', BIV_SERVER['SERVER_NAME'] ?? 'localhost');
+
+        $ua = BIV_SERVER['HTTP_USER_AGENT'] ?? '';
+        $ua = $ua ?: '';
+        $ua = htmlentities($ua, ENT_QUOTES, 'UTF-8');
+        self::$is_ie = preg_match('~MSIE|Internet Explorer~i', $ua) || (str_contains($ua, 'Trident/7.0') && str_contains($ua, 'rv:11.0'));
+    }
+
+    public static array $html5Tags
+        = [
+            'main',
+            'footer',
+            'section',
+            'small',
+            'nav',
+            'header',
+            'figure',
+            'article',
+        ];
+    public static array $autoClosedTags
+        = [
+            'img',
+            'br',
+            'hr',
+            'input',
+            'area',
+            'link',
+            'meta',
+            'param',
+            'base',
+            'col',
+            'command',
+            'keygen',
+            'source'
+        ];
+    public static array $voidElements
+        = [
+            'area',
+            'base',
+            'br',
+            'col',
+            'command',
+            'embed',
+            'hr',
+            'img',
+            'input',
+            'keygen',
+            'link',
+            'meta',
+            'param',
+            'source',
+            'track',
+            'wbr',
+        ];
+
+    final public static function div(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('div', $attributes, $content);
+    }
+
+
+    final public static function tag(string $tag, array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+
+        if (self::$is_ie && in_array($tag, self::$html5Tags, true)) { //IE fix
+            $tag = 'div';
+        }
+
+
         $tag = strtolower($tag);
 
-        $return_empty = false;
 
-        $url_data = ($attributes[self::ACCESS_TAG_URL] ?? '');
-        $url_href = ($attributes['href'] ?? '');
-        $url_action = ($attributes['action'] ?? '');
-        $url_src = ($attributes['src'] ?? '');
+        $content_html = is_string($content) ? $content : self::arrayToString($content);
 
-        if ($url_data || $url_href || $url_action || $url_src) {
-            $url = '';
-
-            if ($url_href) {
-                $url = $url_href;
-            }
-            if ($url_action) {
-                $url = $url_action;
-            }
-            if ($url_src) {
-                $url = $url_src;
-            }
-            if ($url && $url !== self::voidHref() && !self::hasPermissionUrl($url)) {
-                $return_empty = true;
-            }
-            if (!$return_empty && $url_data) {
-                $allowed = false;
-                foreach ($url_data as $d_url) {
-                    if ($d_url === self::voidHref() || self::hasPermissionUrl($d_url)) {
-                        $allowed = true;
-                        break;
-                    }
-                }
-                if (!$allowed) {
-                    $return_empty = true;
-                }
-            }
-        }
-
-        if ($return_empty) {
-            return '';
-        }
-
-        $csrf_tag = '';
-
-        if ($tag === 'form' && isset($attributes['method']) && !isset($attributes['action']) && strtolower($attributes['method']) === 'post') {
-            $attributes['action'] = self::uri();
-        }
-
-        $content_html = self::toString($content);
-        $start_tag = "<$tag" . static::renderTagAttributes($attributes, $tag) . '>';
-        $html = $start_tag;
+        $html = "<{$tag}" . self::renderTagAttributes($attributes, $tag) . '>';
 
         if (in_array($tag, static::$autoClosedTags, true)) {
             $output = $html;
         } else {
-            $output = in_array(strtolower($tag), static::$voidElements, true) ? $html : "$html$csrf_tag$content_html</$tag>";
+            $output = in_array(strtolower($tag), static::$voidElements, true) ?
+                $html : "{$html}{$content_html}</{$tag}>";
         }
 
         return $output;
     }
 
-    /**
-     * Link that does not reload the page
-     *
-     * @return string
-     */
-    public static function voidHref(): string
-    {
-        return '#'; // javascript:void(0) ???
-    }
-
-    /**
-     * Hide HTML block, if access not allowed
-     *
-     * @param null $url
-     *
-     * @return bool
-     */
-    public static function hasPermissionUrl($url = null): bool
-    {
-        /// check if user has permission show link
-        /// write your code HERE
-        return (bool)$url;
-    }
-
-    /**
-     * Get full URL
-     *
-     * @return string
-     */
-    public static function uri(): string
-    {
-        return $_SERVER['REQUEST_URI'] ?? '';
-    }
-
-    /**
-     * Convert array, function, number to string
-     *
-     * @param        $data
-     * @param string $delimiter
-     *
-     * @return string
-     */
-    public static function toString($data, string $delimiter = ''): string
+    public static function arrayToString(mixed $data, string $delimiter = ''): string
     {
 
         $str = '';
@@ -171,19 +127,19 @@ class H
             if (is_string($data) || is_numeric($data)) {
                 $str .= $data;
             } elseif (is_callable($data)) {
-                $str .= self::toString($data(), $delimiter);
+                $str .= self::arrayToString($data(), $delimiter);
             } elseif (is_array($data)) {
                 foreach ($data as $val) {
                     if (is_array($val)) {
-                        $str .= $delimiter . self::toString($val, $delimiter);
+                        $str .= $delimiter . self::arrayToString($val, $delimiter);
                     } elseif (is_string($val)) {
                         $str .= $delimiter . $val;
                     } elseif (is_numeric($val)) {
                         $str .= $delimiter . $val;
                     } elseif ($val === null) {
-                        $str .= $delimiter . '';
+                        $str .= $delimiter;
                     } elseif (is_callable($val)) {
-                        $str .= self::toString($val, $delimiter);
+                        $str .= self::arrayToString($val, $delimiter);
                     }
                 }
             }
@@ -192,14 +148,37 @@ class H
         return $str;
     }
 
-    /**
-     * Build XML attributes from array
-     *
-     * @param array  $attributes
-     * @param string $tag
-     *
-     * @return string
-     */
+    public static function encode(string $content, bool $doubleEncode = true): string
+    {
+        return htmlspecialchars(
+            $content,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8',
+            $doubleEncode
+        );
+    }
+
+    public static function htmlEncode(array|null $value = null): string
+    {
+        return static::encode(
+            $value,
+            JSON_UNESCAPED_UNICODE | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS
+        );
+    }
+
+    #[Pure] public static function styleFromArray(array $style): string
+    {
+        $result = '';
+        foreach ($style as $name => $value) {
+            $result .= "{$name}: {$value}; ";
+        }
+
+        if ($result === '') {
+            return '';
+        }
+        return rtrim($result);
+    }
+
     private static function renderTagAttributes(array $attributes, string $tag): string
     {
 
@@ -207,91 +186,83 @@ class H
             return '';
         }
 
-        if (isset($attributes['href'])) {
-            $link_url = $attributes['href'];
-            if ($tag !== 'meta' && self::isCurrent($link_url)) {
-                isset($attributes['class']) ? $attributes['class'] .= ' active current-post' : $attributes['class'] = 'active current-post';
-            }
-            if (self::isExternal($link_url)) {
-                isset($attributes['class']) ? $attributes['class'] .= ' external-link' : $attributes['class'] = 'external-link';
-            }
+        if (isset($attributes['href']) && $attributes['href'] === self::VOID_HREF) {
+            $attributes['rel'] = 'nofollow noopener';
         }
-        if ($tag === 'img' && !isset($attributes['alt'])) {
-            $attributes['alt'] = 'image';
+        if ($tag === 'img') {
+            if (isset($attributes['alt']) && !isset($attributes['title'])) {
+                $attributes['title'] = $attributes['alt'];
+            }
+            if (!isset($attributes['loading'])) {
+                $attributes['loading'] = 'lazy';
+            }
         }
 
-        $out = '';
+        $html = '';
 
         foreach ($attributes as $name => $value) {
             if (is_string($value) && $tag === 'input' && $name === 'value') {
-                $value = self::textEncode($value);
+                //$value = Translator::removeInlineTrans($value);
+                $value = self::encode($value);
             }
 
-            //check duplicate ID ?, kill?
-            if (($name === 'id') && !$value) {
+            if ($name === 'id' && !$value) {
                 continue;
             }
 
             if (is_bool($value)) {
                 if ($value) {
-                    $out .= " $name";
+                    $html .= " {$name}";
                 }
-            } elseif ($name === 'href' || $name === 'src' || $name === 'action') {
+            } elseif ($name === 'href' || $name === 'action') {
                 if ($value) {
-                    $out .= " $name=\"" . self::link($value) . '"';
+                    $html .= " {$name}=\"" . self::linkUrl($value) . '"';
+                }
+            } elseif ($name === 'src') {
+                if ($value) {
+                    $link = self::linkUrl($value);
+                    $html .= " {$name}=\"" . $link . '"';
                 }
             } elseif (is_array($value)) {
                 if (str_contains('data-', $name)) {
                     foreach ($value as $data_name => $data_val) {
                         if (is_array($data_val)) {
-                            $out .= " $name-$data_name='" . self::htmlEncode($data_val) . "'";
+                            $html .= " {$name}-{$data_name}='" . self::htmlEncode($data_val) . "'";
                         } else {
-                            $out .= " $name-$data_name=\"" . self::textEncode($data_val) . '"';
+                            $html .= " {$name}-{$data_name}=\"" . self::encode($data_val) . '"';
                         }
                     }
                 } elseif ($name === 'style') {
                     if (empty($value)) {
                         continue;
                     }
-                    $out .= " $name=\"" . self::textEncode(self::styleFromArray($value)) . '"';
+                    $html .= " {$name}=\"" . self::encode(self::styleFromArray($value)) . '"';
                 } elseif ($name === 'class') {
                     if (empty($value)) {
                         continue;
                     }
-                    $out .= " $name=\"" . self::textEncode(implode(' ', $value)) . '"';
+                    $html .= " {$name}=\"" . self::encode(
+                            implode(' ',
+                                array_filter(
+                                    array_map('trim', $value), static function (mixed $value) {
+                                    return $value !== '';
+                                }
+                                )
+                            )) . '"';
                 } else {
-                    $out .= " $name='" . self::htmlEncode($value) . "'";
+                    $html .= " {$name}='" . self::htmlEncode($value) . "'";
                 }
             } elseif ($value !== null) {
-                $out .= " $name=\"" . self::textEncode($value) . '"';
+                $html .= " {$name}=\"" . self::encode($value) . '"';
             }
         }
 
-        return $out;
+        return $html;
     }
 
-    /**
-     * Compare anchor href with browser address
-     *
-     * @param null $link
-     *
-     * @return bool
-     */
-    public static function isCurrent(mixed $link = null): bool
+    public static function linkUrl(mixed $url, bool $relative = true): string
     {
-        return self::link($link) === self::link(self::uri());
-    }
 
-    /**
-     * Build link
-     *
-     * @param mixed $url
-     * @param bool  $relative
-     *
-     * @return string
-     */
-    public static function link(mixed $url, bool $relative = true): string
-    {
         $action = '';
         if (is_string($url)) {
             $action = $url;
@@ -311,16 +282,15 @@ class H
             $route = self::base() . self::toRoute($url);
         }
 
+
         return $route;
     }
 
-    /**
-     * Build relative link from array
-     *
-     * @param array $url
-     *
-     * @return string
-     */
+    public static function base(): string
+    {
+        return 'https://www.' . self::$domain;
+    }
+
     public static function toRoute(array $url): string
     {
         $query_arr = $url;
@@ -329,72 +299,299 @@ class H
         return $url[0] . ($query ? ('?' . $query) : '');
     }
 
-    /*
-     * Return base domain
-     */
-    public static function base(): string
+    final public static function link(array|null $attributes = null, mixed $content = null): string
     {
-        return str_replace('www.', '', $_SERVER['SERVER_NAME'] ?? '');
+        $attributes ??= [];
+        return self::tag('link', $attributes, $content);
     }
 
-    /**
-     * Safe string output
-     *
-     * @param string|array $link
-     *
-     * @return bool
-     */
-    public static function isExternal(string|array $link): bool
+    final public static function wrap(array $values = []): string
     {
-        $url = $link;
-
-        if (is_array($link)) {
-            $url = $link[0] ?? '';
-        }
-
-        return str_contains($url, '://');
+        return self::arrayToString($values);
     }
 
-    /**
-     * Safe string
-     *
-     * @param string|null $text
-     * @param bool        $doubleEncode
-     *
-     * @return string
-     */
-    public static function textEncode(string $text = null, bool $doubleEncode = true): string
+    final public static function h1(array|null $attributes = null, mixed $content = null): string
     {
-        return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
+        $attributes ??= [];
+        return self::tag('h1', $attributes, $content);
     }
 
-    /**
-     * Safe HTML string output
-     *
-     * @param $value
-     *
-     * @return string
-     */
-    public static function htmlEncode($value): string
+    final public static function input(array $attributes = []): string
     {
-        return static::textEncode($value, JSON_UNESCAPED_UNICODE | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
+        return self::tag('input', $attributes);
     }
 
-    /**
-     * Convert array to inline styles
-     *
-     * @param array $style
-     *
-     * @return string
-     */
-    public static function styleFromArray(array $style): string
+    final public static function label(array|null $attributes = null, mixed $content = null): string
     {
-        $result = '';
-        foreach ($style as $name => $value) {
-            $result .= "$name: $value; ";
-        }
-
-        return $result === '' ? '' : rtrim($result);
+        $attributes ??= [];
+        return self::tag('label', $attributes, $content);
     }
 
+    final public static function option(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('option', $attributes, $content);
+    }
+
+    final public static function select(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('select', $attributes, $content);
+    }
+
+    final public static function ul(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('ul', $attributes, $content);
+    }
+
+    final public static function li(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('li', $attributes, $content);
+    }
+
+    final public static function a(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('a', $attributes, $content);
+    }
+
+    final public static function strong(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('strong', $attributes, $content);
+    }
+
+    final public static function span(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('span', $attributes, $content);
+    }
+
+    final public static function img(array $attributes = []): string
+    {
+        return self::tag('img', $attributes);
+    }
+
+    final public static function table(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('table', $attributes, $content);
+    }
+
+    final public static function th(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('th', $attributes, $content);
+    }
+
+    final public static function tr(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('tr', $attributes, $content);
+    }
+
+    final public static function td(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('td', $attributes, $content);
+    }
+
+    final public static function br(array $attributes = []): string
+    {
+        return self::tag('br', $attributes);
+    }
+
+    final public static function hr(array $attributes = []): string
+    {
+        return self::tag('hr', $attributes);
+    }
+
+    final public static function main(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('main', $attributes, $content);
+    }
+
+    final public static function script(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('script', $attributes, $content);
+    }
+
+    final public static function meta(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('meta', $attributes, $content);
+    }
+
+    final public static function code(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('code', $attributes, $content);
+    }
+
+    final public static function h2(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('h2', $attributes, $content);
+    }
+
+    final public static function button(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('button', $attributes, $content);
+    }
+
+    final public static function form(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('form', $attributes, $content);
+    }
+
+    final public static function pre(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('pre', $attributes, $content);
+    }
+
+    final public static function h3(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('h3', $attributes, $content);
+    }
+
+    final public static function textarea(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('textarea', $attributes, $content);
+    }
+
+    final public static function h4(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('h4', $attributes, $content);
+    }
+
+    final public static function svg(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('svg', $attributes, $content);
+    }
+
+    final public static function rect(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('rect', $attributes, $content);
+    }
+
+    final public static function header(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('header', $attributes, $content);
+    }
+
+    final public static function p(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('p', $attributes, $content);
+    }
+
+    final public static function style(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('style', $attributes, $content);
+    }
+
+    final public static function h5(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('h5', $attributes, $content);
+    }
+
+    final public static function footer(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('footer', $attributes, $content);
+    }
+
+    final public static function head(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('head', $attributes, $content);
+    }
+
+    final public static function title(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('title', $attributes, $content);
+    }
+
+    final public static function ol(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('ol', $attributes, $content);
+    }
+
+    final public static function figure(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('figure', $attributes, $content);
+    }
+
+    final public static function article(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('article', $attributes, $content);
+    }
+
+    final public static function thead(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('thead', $attributes, $content);
+    }
+
+    final public static function tbody(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('tbody', $attributes, $content);
+    }
+
+    final public static function small(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('small', $attributes, $content);
+    }
+
+    final public static function i(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('i', $attributes, $content);
+    }
+
+    final public static function nav(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('nav', $attributes, $content);
+    }
+
+
+    final public static function start(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        $attributes['lang'] = self::$language;
+        return self::docType() . self::tag('html', $attributes, $content);
+    }
+
+    public static function docType(): string
+    {
+        return '<!doctype html>';
+    }
+
+    final public static function body(array|null $attributes = null, mixed $content = null): string
+    {
+        $attributes ??= [];
+        return self::tag('body', $attributes, $content);
+    }
 }
