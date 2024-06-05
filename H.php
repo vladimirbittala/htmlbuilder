@@ -10,8 +10,9 @@ use function is_string;
 
 /**
  */
-class HtmlBuilder
+class H
 {
+
     public const ACCESS_TAG_URL = 'data-access_url';
     public static array $autoClosedTags = [
         'img',
@@ -56,6 +57,7 @@ class HtmlBuilder
      *
      * @return string
      */
+
     public function tag(string $tag, array $attributes = [], $content = null): string
     {
         $tag = strtolower($tag);
