@@ -1,5 +1,8 @@
-<?php /** @noinspection PhpUnused */
+<?php /** @noinspection SpellCheckingInspection */
+
+/** @noinspection PhpUnused */
 namespace biv\core;
+use BadMethodCallException;
 use Stringable;
 use function in_array;
 use function is_array;
@@ -101,7 +104,7 @@ class H
     public static function detectIe(string $userAgent): bool
     {
         $ua = htmlentities($userAgent, ENT_QUOTES, 'UTF-8');
-        return (bool)preg_match('~MSIE|Internet Explorer~i', $ua)
+        return preg_match('~MSIE|Internet Explorer~i', $ua)
             || (str_contains($ua, 'Trident/7.0') && str_contains($ua, 'rv:11.0'));
     }
     /**
@@ -111,7 +114,7 @@ class H
     {
         $tag = strtolower($name);
         if (!in_array($tag, self::TAG_METHODS, true)) {
-            throw new \BadMethodCallException('Call to undefined method ' . static::class . "::{$name}()");
+            throw new BadMethodCallException('Call to undefined method ' . static::class . "::$name()");
         }
         $attributes = $arguments['attributes'] ?? $arguments[0] ?? null;
         $content = $arguments['content'] ?? $arguments[1] ?? null;
@@ -124,11 +127,11 @@ class H
         if (self::$is_ie && in_array($tag, self::$html5Tags, true)) { //IE fix
             $tag = 'div';
         }
-        $html = "<{$tag}" . self::renderTagAttributes($attributes, $tag) . '>';
+        $html = "<$tag" . self::renderTagAttributes($attributes, $tag) . '>';
         if (in_array($tag, self::$autoClosedTags, true) || in_array($tag, self::$voidElements, true)) {
             return $html;
         }
-        return $html . (is_string($content) ? $content : self::arrayToString($content)) . "</{$tag}>";
+        return $html . (is_string($content) ? $content : self::arrayToString($content)) . "</$tag>";
     }
     public static function arrayToString(mixed $data, string $delimiter = ''): string
     {
@@ -186,9 +189,7 @@ class H
             $doubleEncode
         );
     }
-    /**
-     * Strings are HTML-escaped, any other value is JSON encoded (safe inside single or double quoted attributes).
-     */
+
     public static function htmlEncode(mixed $value = null): string
     {
         if (is_string($value)) {
@@ -208,7 +209,7 @@ class H
     {
         $result = '';
         foreach ($style as $name => $value) {
-            $result .= "{$name}: " . self::stringify($value) . '; ';
+            $result .= "$name: " . self::stringify($value) . '; ';
         }
         return rtrim($result);
     }
@@ -222,20 +223,20 @@ class H
         if ($url === '') {
             return '';
         }
-        return " {$name}=\"" . self::encode($url, false) . '"';
+        return " $name=\"" . self::encode($url, false) . '"';
     }
     private static function renderDataAttributes(string $name, array $values): string
     {
         $html = '';
         foreach ($values as $dataName => $dataVal) {
-            $attr = "{$name}-{$dataName}";
+            $attr = "$name-$dataName";
             if (!self::isValidAttributeName($attr)) {
                 continue;
             }
             if (is_array($dataVal)) {
-                $html .= " {$attr}='" . self::jsonEncode($dataVal) . "'";
+                $html .= " $attr='" . self::jsonEncode($dataVal) . "'";
             } else {
-                $html .= " {$attr}=\"" . self::encode($dataVal) . '"';
+                $html .= " $attr=\"" . self::encode($dataVal) . '"';
             }
         }
         return $html;
@@ -249,16 +250,16 @@ class H
             return self::renderDataAttributes($name, $value);
         }
         if ($name === 'style') {
-            return " {$name}=\"" . self::encode(self::styleFromArray($value)) . '"';
+            return " $name=\"" . self::encode(self::styleFromArray($value)) . '"';
         }
         if ($name === 'class') {
             $classes = array_filter(
                 array_map(static fn(mixed $v): string => trim(self::stringify($v)), $value),
                 static fn(string $v): bool => $v !== ''
             );
-            return $classes === [] ? '' : " {$name}=\"" . self::encode(implode(' ', $classes)) . '"';
+            return $classes === [] ? '' : " $name=\"" . self::encode(implode(' ', $classes)) . '"';
         }
-        return " {$name}='" . self::jsonEncode($value) . "'";
+        return " $name='" . self::jsonEncode($value) . "'";
     }
     private static function renderTagAttributes(array $attributes, string $tag): string
     {
@@ -286,7 +287,7 @@ class H
             }
             if (is_bool($value)) {
                 if ($value) {
-                    $html .= " {$name}";
+                    $html .= " $name";
                 }
             } elseif ($name === 'href' || $name === 'action' || $name === 'src') {
                 if ($value) {
@@ -295,7 +296,7 @@ class H
             } elseif (is_array($value)) {
                 $html .= self::renderArrayAttribute($name, $value);
             } elseif ($value !== null) {
-                $html .= " {$name}=\"" . self::encode($value) . '"';
+                $html .= " $name=\"" . self::encode($value) . '"';
             }
         }
         return $html;

@@ -21,7 +21,7 @@ return H::div(['class' => 'notice-alert' . ' auto_closed'], [
                 ]),
             ])
         ]),
-        H::a(['class' => 'open_close_notice', 'rel' => 'nofollow', 'href' => ['/option/toggle-alert'], 'aria-label' => 'ttttt'], [
+        H::a(['class' => 'open_close_notice', 'rel' => 'nofollow', 'href' => ['/option/toggle-alert'], 'aria-label' => 'Test Label'], [
             H::div(['class' => 'close_notice'], [
                 'x'
             ]),
